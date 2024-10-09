@@ -102,11 +102,16 @@ func (validator *profileValidator) Validate(profiles api.ClusterProfilesList) er
 
 // checkCiSecrets verifies that the secret for each cluster profile exists in the ci namespace
 func (validator *profileValidator) checkCiSecrets() error {
-	for p := range validator.profiles {
+	for profile, details := range validator.profiles {
+		ciSecretName := details.Secret
+		if ciSecretName == "" {
+			ciSecretName = profile.Secret()
+		}
+
 		ciSecret := &coreapi.Secret{}
-		err := validator.kubeClient.Get(context.Background(), ctrlruntimeclient.ObjectKey{Namespace: "ci", Name: p.Secret()}, ciSecret)
+		err := validator.kubeClient.Get(context.Background(), ctrlruntimeclient.ObjectKey{Namespace: "ci", Name: ciSecretName}, ciSecret)
 		if err != nil {
-			return fmt.Errorf("failed to get secret '%s' for cluster profile '%s': %w", p.Secret(), p.Name(), err)
+			return fmt.Errorf("failed to get secret '%s' for cluster profile '%s': %w", ciSecretName, profile.Name(), err)
 		}
 	}
 	return nil
